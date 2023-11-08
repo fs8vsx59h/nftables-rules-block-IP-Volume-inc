@@ -1,6 +1,6 @@
 #!/usr/sbin/nft -f
 
-table inet firewall {
+table ip firewall {
 
     set blocklist {
         type ipv4_addr
