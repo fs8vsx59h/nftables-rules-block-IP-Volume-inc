@@ -1,6 +1,5 @@
 #!/bin/bash
 
-sleep 60
 # 定义新的nftables表、链和集合
 table_name="custom_block"
 chain_name="input"
@@ -18,8 +17,11 @@ nft add chain ip $table_name $chain_name { type filter hook input priority -1 \;
 nft add set ip $table_name $set_name { type ipv4_addr\; flags interval\; }
 
 # 在新的nftables链中添加规则来屏蔽集合中的IP地址
-nft add rule ip $table_name $chain_name ip saddr @blocked_ips counter drop
-
+if ! nft list chain ip $table_name $chain_name | grep -q "ip saddr @blocked_ips counter packets"
+then
+    # 如果规则不存在，添加规则
+    nft add rule ip $table_name $chain_name ip saddr @blocked_ips counter drop
+fi
 # 遍历日志输出
 while IFS= read -r line
 do
@@ -36,10 +38,9 @@ do
         then
             # 如果IP地址不在集合中，将其添加到集合中
             nft add element ip $table_name $set_name { $cidr }
+            echo "adding element $table_name $set_name $cidr "
         fi
     fi
-    # 备份规则到文件
-    nft list ruleset > /vserver/autogenbackup.nft
-    # # 等待一段时间
-    sleep 600
 done <<< "$log_output"
+
+nft list table $table_name > /etc/nftables.conf
